@@ -359,7 +359,6 @@ public class MapChooser : BasePlugin
 
     private void StartTimeSelectMaps(List<string> maps, bool forced = false)
     {
-        Server.PrintToChatAll("Start Time");
         _selectMapCount.Clear();
 
         var menu = new ChatMenu("MapChooser");
