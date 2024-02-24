@@ -17,6 +17,7 @@ The config is created automatically in the same place where the dll is located
   "TimeVote": 20, //How long before the end of the map to start voting
   "PlayedMaps": 5, //How many maps must be played to unlock a card that has already been played
   "StartVoteChangeMap": 2.0, //How long to start voting on a completed map (in minutes)
+  "VotingRoundThreshold": 3, //How many rounds to extend the map for
   "ExtendTime": 10 //For how long to extend the card (in minutes)
 }
 ```
@@ -98,3 +99,5 @@ If you have maps by category just delete "Maps"
 **css_nextmap**,**!nextmap** - the next map
 
 **css_timeleft**,**!timeleft** - how long until the end of the map
+
+**css_revote**,**!revote** - allows you to reselect a card
