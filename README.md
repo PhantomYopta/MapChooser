@@ -18,7 +18,8 @@ The config is created automatically in the same place where the dll is located
   "PlayedMaps": 5, //How many maps must be played to unlock a card that has already been played
   "StartVoteChangeMap": 2.0, //How long to start voting on a completed map (in minutes)
   "VotingRoundThreshold": 3, //How many rounds to extend the map for
-  "ExtendTime": 10 //For how long to extend the card (in minutes)
+  "ExtendTime": 10, //For how long to extend the card (in minutes)
+  "ExtendRound": 10
 }
 ```
 Map customization.
