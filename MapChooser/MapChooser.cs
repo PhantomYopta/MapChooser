@@ -44,8 +44,6 @@ public class MapChooser : BasePlugin
         _config = LoadConfig();
         ReadJson();
 
-        if (_mapsList.Count != 0) _nominateMap.TryAdd("None", new List<string>());
-
         RegisterListener<Listeners.OnClientConnected>((slot =>
                 {
                     var player = Utilities.GetPlayerFromSlot(slot);
@@ -63,6 +61,10 @@ public class MapChooser : BasePlugin
             _isExtendMap = false;
             _selectMapCount.Clear();
             _nominateMap.Clear();
+
+            if (_mapsList.Count != 0)
+                _nominateMap.TryAdd("None", new List<string>());
+
             AddTimer(1.0f,
                 () =>
                 {
@@ -328,16 +330,15 @@ public class MapChooser : BasePlugin
                     _nominateMap.TryGetValue(mostUsedMap, out var value) ? value : new List<string>());
                 StartTimeSelectMaps(rMaps, forced);
             });
+            foreach (var player in Utilities.GetPlayers())
+            {
+                ChatMenus.OpenMenu(player, menu);
+            }
         }
         else
         {
             var rMaps = SelectRandomMaps(_mapsList, _playedMap, _nominateMap["None"]);
             StartTimeSelectMaps(rMaps, forced);
-        }
-
-        foreach (var player in Utilities.GetPlayers())
-        {
-            ChatMenus.OpenMenu(player, menu);
         }
     }
 
@@ -362,6 +363,8 @@ public class MapChooser : BasePlugin
         _selectMapCount.Clear();
 
         var menu = new ChatMenu("MapChooser");
+        if (_mapsList.Count != 0 && !_isExtendMap && forced)
+            menu.AddMenuOption(Localizer["extend_map"], OnSelectCategory);
         foreach (var map in maps)
         {
             menu.AddMenuOption(map, (controller, option) =>
@@ -428,16 +431,23 @@ public class MapChooser : BasePlugin
         var configPath = Path.Combine(ModuleDirectory, "maps.json");
         var json = File.ReadAllText(configPath);
         var data = JObject.Parse(json);
-        var settings = (JObject)data["Settings"];
-
-        if (settings.SelectMany<KeyValuePair<string, JToken>, JToken>(kvp =>
-                kvp.Value.SelectMany(jt => (jt["workshop"] as JArray))).Any(token => token.ToString() == mapName))
+        if(_mapsList.Count == 0)
         {
-            return true;
+            var settings = (JObject)data["Settings"];
+
+            if (settings.SelectMany<KeyValuePair<string, JToken>, JToken>(kvp =>
+                    kvp.Value.SelectMany(jt => (jt["workshop"] as JArray))).Any(token => token.ToString() == mapName))
+            {
+                return true;
+            }
+        }
+        else
+        {
+            var maps = (JArray)data["Maps"];
+            return maps.Any(jt => (jt["workshop"] as JArray).Any(token => token.ToString() == mapName));
         }
 
-        var maps = (JArray)data["Maps"];
-        return maps.Any(jt => (jt["workshop"] as JArray).Any(token => token.ToString() == mapName));
+        return false;
     }
 
     private List<string> SelectRandomMaps(List<string> allMaps, List<string> playedMaps, List<string> nominatedMaps)

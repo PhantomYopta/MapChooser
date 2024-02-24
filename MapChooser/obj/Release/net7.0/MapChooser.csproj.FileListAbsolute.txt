@@ -1,0 +1,12 @@
+F:\DataPC\SourceSharp\MapChooser\MapChooser\bin\Release\net7.0\MapChooser.deps.json
+F:\DataPC\SourceSharp\MapChooser\MapChooser\bin\Release\net7.0\MapChooser.dll
+F:\DataPC\SourceSharp\MapChooser\MapChooser\bin\Release\net7.0\MapChooser.pdb
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\MapChooser.csproj.AssemblyReference.cache
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\MapChooser.GeneratedMSBuildEditorConfig.editorconfig
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\MapChooser.AssemblyInfoInputs.cache
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\MapChooser.AssemblyInfo.cs
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\MapChooser.csproj.CoreCompileInputs.cache
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\MapChooser.dll
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\refint\MapChooser.dll
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\MapChooser.pdb
+F:\DataPC\SourceSharp\MapChooser\MapChooser\obj\Release\net7.0\ref\MapChooser.dll
