@@ -20,7 +20,8 @@ public class MapChooser : BasePlugin
 
     private UsersSettings[] _users = new UsersSettings[65];
     private Config _config;
-
+    private ChatMenu _menuSelectMap;
+    
     private Dictionary<string, List<string>> _categoryMaps = new();
     private Dictionary<string, int> _selectMapCount = new();
 
@@ -30,10 +31,12 @@ public class MapChooser : BasePlugin
 
     private int _votedRtv;
     private int _playedMapsCount;
-
+    private int _maxrounds = 0;
+    
     private string? _nextmap;
 
     private double _timeLimit;
+    private double _cTimeLimit;
 
     private bool _isStartVote;
     private bool _isExtendMap;
@@ -51,7 +54,18 @@ public class MapChooser : BasePlugin
                     _users[slot + 1] = new UsersSettings { IsNominated = false, IsRtv = false, NominateMap = null };
                 }
             ));
+        
+        RegisterEventHandler<EventRoundEnd>(((@event, info) =>
+        {
+            if (_maxrounds <= 0) return HookResult.Continue;
 
+            _maxrounds--;
+            
+            if(_maxrounds == _config.VotingRoundThreshold)
+                StartVoteChangeMap();
+            return HookResult.Continue;
+        }));
+        
         RegisterListener<Listeners.OnMapStart>((name =>
         {
             _timeLimit = 0;
@@ -68,9 +82,14 @@ public class MapChooser : BasePlugin
             AddTimer(1.0f,
                 () =>
                 {
-                    _timeLimit = ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() * 60.0f + Server.EngineTime;
+                    _maxrounds = ConVar.Find("mp_maxrounds")!.GetPrimitiveValue<int>();
+                    _cTimeLimit = ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>();
+                    if (!(_cTimeLimit > 0)) return;
+                    _timeLimit = ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() * 60.0f +
+                                 Server.EngineTime;
                     AddTimer(
-                        (ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() - _config.StartVoteChangeMap) * 60.0f,
+                        (ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() - _config.StartVoteChangeMap) *
+                        60.0f,
                         () =>
                         {
                             if (!_isStartVote && _nextmap == null)
@@ -122,6 +141,16 @@ public class MapChooser : BasePlugin
         AddCommand("css_nominate", "", OnCommandNominate);
         AddCommand("css_timeleft", "", OnCommandTimeleft);
         AddCommand("css_nextmap", "", OnCommandNextMap);
+        AddCommand("css_revote", "", OnCommandRevote);
+    }
+
+    private void OnCommandRevote(CCSPlayerController? player, CommandInfo commandinfo)
+    {
+        if(player == null) return;
+        
+        if(!_isStartVote || _users[player.Index].SelectMap == null) return;
+        _selectMapCount[_users[player.Index].SelectMap!]--;
+        ChatMenus.OpenMenu(player, _menuSelectMap);
     }
 
     private void OnCommandNextMap(CCSPlayerController? player, CommandInfo commandinfo)
@@ -136,13 +165,20 @@ public class MapChooser : BasePlugin
     private void OnCommandTimeleft(CCSPlayerController? player, CommandInfo commandinfo)
     {
         if (player == null) return;
-        var time = _timeLimit - Server.EngineTime;
-        var hours = (int)(time / 3600);
-        var minutes = (int)((time % 3600) / 60);
-        var seconds = (int)(time % 60);
+        if(_cTimeLimit > 0)
+        {
+            var time = _timeLimit - Server.EngineTime;
+            var hours = (int)(time / 3600);
+            var minutes = (int)((time % 3600) / 60);
+            var seconds = (int)(time % 60);
 
-        if (time > 0.0)
-            player.PrintToChat(Localizer["timeleft", $"{hours:D2}:{minutes:D2}:{seconds:D2}"]);
+            if (time > 0.0)
+                player.PrintToChat(Localizer["timeleft", $"{hours:D2}:{minutes:D2}:{seconds:D2}"]);
+        }
+        else
+        {
+            player.PrintToChat(Localizer["timeleft_round", _maxrounds]);
+        }
     }
 
     private void OnCommandNominate(CCSPlayerController? player, CommandInfo commandinfo)
@@ -345,14 +381,23 @@ public class MapChooser : BasePlugin
     private void ExtendMap()
     {
         _isExtendMap = true;
-        var time = ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() + _config.ExtendTime;
-        Server.PrintToChatAll(Localizer["select_extend_map", _config.ExtendTime]);
-        Server.ExecuteCommand($"mp_timelimit {time}");
-        _votedRtv = 0;
-        _selectMapCount.Clear();
-        _isStartVote = false;
-        AddTimer(1.0f, (() =>
-            _timeLimit = ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() * 60.0f + Server.EngineTime));
+        if(_cTimeLimit > 0)
+        {
+            var time = ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() + _config.ExtendTime;
+            Server.PrintToChatAll(Localizer["select_extend_map", _config.ExtendTime]);
+            Server.ExecuteCommand($"mp_timelimit {time}");
+            _votedRtv = 0;
+            _selectMapCount.Clear();
+            _isStartVote = false;
+            AddTimer(1.0f, (() =>
+                _timeLimit = ConVar.Find("mp_timelimit")!.GetPrimitiveValue<float>() * 60.0f + Server.EngineTime));
+        }
+        else
+        {
+            _maxrounds += _config.ExtendRound;
+            var round = ConVar.Find("mp_maxrounds")!.GetPrimitiveValue<int>() + _config.ExtendRound;
+            Server.ExecuteCommand($"mp_maxrounds {round}");
+        }
 
         foreach (var player in Utilities.GetPlayers())
             _users[player.Index].IsRtv = false;
@@ -362,14 +407,15 @@ public class MapChooser : BasePlugin
     {
         _selectMapCount.Clear();
 
-        var menu = new ChatMenu("MapChooser");
+        _menuSelectMap = new ChatMenu("MapChooser");
         if (_mapsList.Count != 0 && !_isExtendMap && forced)
-            menu.AddMenuOption(Localizer["extend_map"], OnSelectCategory);
+            _menuSelectMap.AddMenuOption(Localizer["extend_map"], OnSelectCategory);
         foreach (var map in maps)
         {
-            menu.AddMenuOption(map, (controller, option) =>
+            _menuSelectMap.AddMenuOption(map, (controller, option) =>
             {
                 Server.PrintToChatAll(Localizer["vote_player", controller.PlayerName, option.Text]);
+                _users[controller.Index].SelectMap = option.Text;
                 if (!_selectMapCount.TryAdd(option.Text, 1))
                 {
                     _selectMapCount[option.Text]++;
@@ -379,7 +425,7 @@ public class MapChooser : BasePlugin
 
         foreach (var player in Utilities.GetPlayers())
         {
-            ChatMenus.OpenMenu(player, menu);
+            ChatMenus.OpenMenu(player, _menuSelectMap);
         }
 
         AddTimer(_config.TimeVote, () =>
@@ -509,7 +555,9 @@ public class MapChooser : BasePlugin
             TimeVote = 20f,
             PlayedMaps = 5,
             StartVoteChangeMap = 5,
-            ExtendTime = 10.0f
+            ExtendTime = 10.0f,
+            ExtendRound = 10,
+            VotingRoundThreshold = 3
         };
 
         File.WriteAllText(configPath,
@@ -524,6 +572,7 @@ public class UsersSettings
     public bool IsNominated { get; set; }
     public bool IsRtv { get; set; }
     public string? NominateMap { get; set; }
+    public string? SelectMap { get; set; }
 }
 
 public class Config
@@ -533,5 +582,7 @@ public class Config
     public float TimeVote { get; set; }
     public int PlayedMaps { get; set; }
     public float StartVoteChangeMap { get; set; }
+    public int VotingRoundThreshold { get; set; }
     public float ExtendTime { get; set; }
+    public int ExtendRound { get; set; }
 }
